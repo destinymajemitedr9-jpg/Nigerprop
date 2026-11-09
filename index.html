@@ -1,13 +1,215 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NaijaProp - Nigerian Property Listings</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NigerProp | Find Your Property in Nigeria</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f5f7f5;color:#17251e}
+header{background:#073b2b;color:white;padding:20px 6%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.logo{font-size:25px;font-weight:bold}
+.logo span{color:#80d6a1}
+header a{color:white;text-decoration:none}
+.hero{padding:65px 7%;background:linear-gradient(120deg,#073b2b,#116747);color:white}
+.hero h1{font-size:clamp(30px,5vw,48px);margin-bottom:15px}
+.hero p{line-height:1.7;color:#e0eee6}
+.search{margin-top:25px;display:flex;gap:10px;flex-wrap:wrap}
+input,select,button{padding:14px;border:1px solid #ddd;border-radius:8px;font-size:15px}
+.search input,.search select{flex:1;min-width:150px}
+button{background:#16a36a;color:white;border:0;cursor:pointer;font-weight:bold}
+main{padding:40px 6%}
+.heading{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin-bottom:25px}
+.heading h2{font-size:27px}
+#message{padding:20px;color:#52675b}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px}
+.card{background:white;border-radius:13px;overflow:hidden;box-shadow:0 4px 18px #00000010}
+.card img{width:100%;height:210px;object-fit:cover;background:#e5eee8}
+.details{padding:17px}
+.details h3{font-size:19px;margin-bottom:10px}
+.price{font-size:21px;color:#087b4c;font-weight:bold;margin-bottom:10px}
+.location{color:#64736a;margin-bottom:12px}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.tag{background:#e9f5ee;padding:7px 10px;border-radius:6px;font-size:12px}
+.contact{display:block;text-align:center;background:#087b4c;color:white;text-decoration:none;padding:12px;border-radius:7px;margin-top:12px}
+footer{background:#073b2b;color:white;text-align:center;padding:28px;margin-top:40px}
+@media(max-width:600px){.hero{padding:45px 6%}main{padding:30px 5%}}
+</style>
 </head>
+
 <body>
-    <h1>Welcome to NaijaProp!</h1>
-    <p>Find houses, apartments, and land for sale or rent across Nigeria.</p>
-    <p>Our website is coming soon!</p>
+
+<header>
+<div class="logo">NIGER<span>PROP</span></div>
+<a href="#properties">Explore Properties</a>
+</header>
+
+<section class="hero">
+<h1>Find Your Next Home in Nigeria.</h1>
+<p>Discover houses, apartments and land for sale or rent across Nigeria.</p>
+
+<div class="search">
+<input id="search" placeholder="Search location or property...">
+<select id="listing">
+<option value="">Sale or Rent</option>
+<option value="Sale">For Sale</option>
+<option value="Rent">For Rent</option>
+</select>
+<select id="type">
+<option value="">Property Type</option>
+<option value="House">House</option>
+<option value="Apartment">Apartment</option>
+<option value="Land">Land</option>
+</select>
+<button onclick="filterProperties()">Search</button>
+</div>
+</section>
+
+<main id="properties">
+<div class="heading">
+<h2>Available Properties</h2>
+<span id="count"></span>
+</div>
+
+<div id="message">Connecting to NigerProp...</div>
+<div class="grid" id="propertyGrid"></div>
+</main>
+
+<footer>
+<h3>NigerProp</h3>
+<p>Making property discovery easier across Nigeria.</p>
+<p>© 2026 NigerProp. All rights reserved.</p>
+</footer>
+
+<script>
+const SUPABASE_URL = "https://uwymwhkytileumyzlshj.supabase.co";
+
+// Replace this with your copied Supabase publishable key.
+const SUPABASE_KEY = "PASTE_YOUR_PUBLISHABLE_KEY_HERE";
+
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+let properties = [];
+
+function safe(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",
+    '"':"&quot;","'":"&#39;"
+  })[c]);
+}
+
+function getImage(value) {
+  if (!value) return "";
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed[0] : parsed;
+  } catch {
+    return String(value).split(",")[0].trim();
+  }
+}
+
+function render(list) {
+  const grid = document.getElementById("propertyGrid");
+  document.getElementById("count").textContent =
+    list.length + " properties";
+
+  if (!list.length) {
+    grid.innerHTML = "";
+    document.getElementById("message").textContent =
+      "No properties found yet. Please check again soon.";
+    return;
+  }
+
+  document.getElementById("message").textContent = "";
+
+  grid.innerHTML = list.map(p => {
+    const image = getImage(p.images);
+    const location = [p.address,p.city,p.state,p.location]
+      .filter(Boolean).join(", ");
+
+    const price = Number(p.price);
+    const priceText = p.price
+      ? "₦" + (Number.isFinite(price) ? price.toLocaleString("en-NG") : safe(p.price))
+      : "Contact for price";
+
+    const phone = String(p.phone_number || "").replace(/\D/g,"");
+
+    return `
+      <article class="card">
+        <img src="${safe(image)}"
+          alt="${safe(p.title)}"
+          onerror="this.style.display='none'">
+        <div class="details">
+          <h3>${safe(p.title || "Property listing")}</h3>
+          <div class="price">${priceText}</div>
+          <div class="location">📍 ${safe(location || "Nigeria")}</div>
+          <div class="tags">
+            <span class="tag">${safe(p.property_type || "Property")}</span>
+            <span class="tag">${safe(p.listing_type || "Listing")}</span>
+            <span class="tag">${safe(p.bedroom || 0)} Bedrooms</span>
+            <span class="tag">${safe(p.bathroom || 0)} Bathrooms</span>
+          </div>
+          <p>${safe(p.description || "")}</p>
+          ${phone ? `<a class="contact" href="https://wa.me/${safe(phone)}">Contact Seller</a>` : ""}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+async function loadProperties() {
+  const message = document.getElementById("message");
+
+  if (SUPABASE_KEY === "sb_publishable_k3kN-Cug1j42LAaq2DB1lQ_N5hMZjvT") {
+    message.textContent = "Add your Supabase publishable key to connect.";
+    return;
+  }
+
+  try {
+    const {data,error} = await db
+      .from("Properties")
+      .select("*")
+      .order("created_at",{ascending:false});
+
+    if(error) throw error;
+
+    properties = data || [];
+    render(properties);
+
+  } catch(error) {
+    console.error(error);
+    message.textContent =
+      "Unable to load properties. Please check your database connection and access policies.";
+  }
+}
+
+function filterProperties() {
+  const search = document.getElementById("search").value.toLowerCase();
+  const listing = document.getElementById("listing").value.toLowerCase();
+  const type = document.getElementById("type").value.toLowerCase();
+
+  const results = properties.filter(p => {
+    const text = [
+      p.title,p.location,p.city,p.state,p.address,p.property_type
+    ].join(" ").toLowerCase();
+
+    return text.includes(search) &&
+      (!listing || String(p.listing_type || "").toLowerCase() === listing) &&
+      (!type || String(p.property_type || "").toLowerCase() === type);
+  });
+
+  render(results);
+}
+
+loadProperties();
+</script>
+
 </body>
 </html>
