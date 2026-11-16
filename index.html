@@ -327,7 +327,6 @@ footer small{display:block;border-top:1px solid #ffffff1a;padding-top:22px;color
         <div class="field"><label for="f_state">State</label><input id="f_state" required placeholder="e.g. Rivers"></div>
         <div class="field full"><label for="f_desc">Description</label><textarea id="f_desc" placeholder="Describe the property, size, features and condition"></textarea></div>
         <div class="field full"><label for="f_photos">Photos</label><input id="f_photos" type="file" accept="image/*" multiple><small>Add 1 to 6 clear photos. The first one is the cover photo.</small></div>
-        <div class="field full"><label for="f_video">Video tour (optional)</label><input id="f_video" type="file" accept="video/*"><small>One short video, up to 25 MB (about 1 minute). MP4 works best.</small></div>
         <div class="hp"><input id="f_site" tabindex="-1" autocomplete="off" aria-hidden="true"></div>
       </div>
       <div style="margin-top:24px"><button class="btn btn-gold" id="submitBtn" type="submit">Submit listing</button></div>
@@ -514,7 +513,8 @@ document.getElementById("listForm").addEventListener("submit", async e => {
   if (phone.length < 10) return say("Enter a valid WhatsApp number.", false);
   if (!files.length) return say("Please add at least one photo.", false);
   if (files.length > 6) return say("You can add up to 6 photos.", false);
-  const vf = document.getElementById("f_video").files[0];
+  const vfEl = document.getElementById("f_video");
+  const vf = vfEl ? vfEl.files[0] : null;
   if (vf && !vf.type.startsWith("video/")) return say("The video file is not a valid video.", false);
   if (vf && vf.size > 25 * 1024 * 1024) return say("The video is too big. Please keep it under 25 MB.", false);
 
